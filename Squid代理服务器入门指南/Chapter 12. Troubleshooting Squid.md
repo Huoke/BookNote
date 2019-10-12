@@ -1,5 +1,5 @@
 # 第12章 squid故障排除
-在前面的章节中，我们学习了以不同模式安装和配置Squid代理服务器。然后我们紧接着进一步学习使用强大的URL重定向工具定制Squid。在部署产或者改变品的模式之前，当配置squid或者测试所有功能时，我们会非常小心，因为这可能会产生问题进而影响到我们的客户。这些问题可能是由于配置错误、Squid的bug、操作系统限制，甚至是由于网络问题造成的。在本章中，我们将学习常见的已知问题，以及如何以有效的方式解决这些问题。
+在前面的章节中，我们学习了以不同模式安装和配置Squid代理服务器。然后我们紧接着进一步学习使用强大的URL重定向工具定制Squid。在部署或者改变产品的模式之前，当配置squid或者测试所有功能时，我们会非常小心，因为这可能会产生问题进而影响到我们的客户。这些问题可能是由于配置错误、Squid的bug、操作系统限制，甚至是由于网络问题造成的。在本章中，我们将学习常见的问题，以及如何以有效的方式解决这些问题。
 
 在本章中，我们将学习如下内容：
 1. 一些常见问题
@@ -14,17 +14,17 @@ WARNING: Cannot write log file: /opt/squid/var/logs/cache.log
 /opt/squid/var/logs/cache.log: Permission denied
   messages will be sent to 'stderr'.
 ```
-当运行squid的用户对包含日志文件的目录或日志文件本身没有写权限时,通常会发生这种情况。这种情况很大程度上是可以避免的，如果我们在操作系统中使用二进制包安装就可以避免这个问题，原因是在安装二进制包时，这些权限会被提前设置好。
-## 1.2 Time for action – 修改日志文件的所有权(changing the ownership of log files)
+当运行squid的用户对包含日志文件的目录或者日志文件本身没有写权限时,通常会发生这种情况。这种情况很大程度上是可以避免的，如果我们在操作系统中使用二进制包安装就可以避免这个问题，原因是在安装二进制包时，这些权限会被提前设置好。
+## 1.2 解决办法 – 修改日志文件的所有权(changing the ownership of log files)
 通过更改日志目录和文件的所有权，可以很快地解决此问题。Squid要么由用户nobody运行，要么使用Squid配置文件中的cache-effective-user指令运行。
 ```Shell
 chown –R nobody:nobody /opt/squid/var/logs/
 ```
 >注意：
 >根据你安装的squid的日志目录替换用户名、组名。
-
 ### What just happened？
 我们了解到Squid应该拥有包含日志文件的目录的所有权，以便能够正确地记录消息。我们还学习了如何使用chown命令更改所有权。
+
 ## 1.3 无法确定主机名(Could not determine hostname)
 此问题出现通常会伴随着另一个问题，如下所示：
 ```Shell
