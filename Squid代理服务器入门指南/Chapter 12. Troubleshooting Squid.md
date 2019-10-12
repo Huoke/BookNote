@@ -15,7 +15,7 @@ WARNING: Cannot write log file: /opt/squid/var/logs/cache.log
   messages will be sent to 'stderr'.
 ```
 当运行squid的用户对包含日志文件的目录或者日志文件本身没有写权限时,通常会发生这种情况。这种情况很大程度上是可以避免的，如果我们在操作系统中使用二进制包安装就可以避免这个问题，原因是在安装二进制包时，这些权限会被提前设置好。
-## 1.2 解决办法 – 修改日志文件的所有权(changing the ownership of log files)
+## 解决办法 – 修改日志文件的所有权(changing the ownership of log files)
 通过更改日志目录和文件的所有权，可以很快地解决此问题。Squid要么由用户nobody运行，要么使用Squid配置文件中的cache-effective-user指令运行。
 ```Shell
 chown –R nobody:nobody /opt/squid/var/logs/
@@ -25,18 +25,18 @@ chown –R nobody:nobody /opt/squid/var/logs/
 ### What just happened？
 我们了解到Squid应该拥有包含日志文件的目录的所有权，以便能够正确地记录消息。我们还学习了如何使用chown命令更改所有权。
 
-## 1.3 无法确定主机名(Could not determine hostname)
+## 1.2 无法确定主机名(Could not determine hostname)
 此问题出现通常会伴随着另一个问题，如下所示：
 ```Shell
 FATAL: Could not determine fully qualified hostname.  Please set 'visible_hostname'
 Squid Cache (Version 3.1.10): Terminated abnormally.
 ```
-当squid无法绑定到确定的IP地址所限定的主机名时，会发生这样的问题，注意了，对于squid 3.2之后的版本，这个错误将从致命转为告警，squid仍将使用localhost名称运行。此问题可以使用配置文件中visible_hostname命令设置合适的主机名来解决，如下所示：
+当squid无法绑定到确定的IP地址所限定的主机名时，会发生这样的问题，注意了，对于squid 3.2之后的版本，这个错误将从致命转为告警，squid仍将使用localhost名称运行。此问题可以使用配置文件中visible_hostname 命令设置合适的主机名来解决，如下所示：
 ```Shell
 visible_hostname proxy.example.com
 ```
 前面提供的主机名现在应该有DNS记录将其解析为代理服务器的IP地址。在一组代理集群中，该主机名对于每个代理服务器都应该是唯一的，以解决IP转发的问题。
-## 1.4 无法创建交换目录(Cannot create swap directories)
+## 1.3 无法创建交换目录(Cannot create swap directories)
 当我们尝试使用squid命令创建新的交换目录时，可能会出现如下错误：
 ```Shell
 [root@saini ~]# /opt/squid/sbin/squid -z
@@ -45,7 +45,7 @@ FATAL: Failed to make swap directory /opt/squid/var/cache: (13) Permission denie
 [root@saini ~]#
 ```
 从前面的错误消息中可以清楚地看到，Squid没有足够的权限来创建交换目录。
-## 1.5 操作时间–修改缓存目录权限（Time for action – fixing cache directory permissions）
+## 解决办法 – 修改缓存目录权限（Time for action – fixing cache directory permissions）
 
 ```Shell
 mkdir /opt/squid/var/cache
@@ -71,7 +71,7 @@ Squid Cache (Version 3.1.10): Terminated abnormally.
 这个错误通常发生在一下情况:
 - 第一次运行squid时没有创建交换目录
 - 使用cache_dir指令更新（添加/修改）现有交换目录后运行squid。
-## 1.6 创建交换目录
+## 1.4 创建交换目录
 通过下面的命令可以修复此错误
 ```Shell
 squid -z
@@ -79,8 +79,8 @@ squid -z
 每次我们添加新的交换目录或修改配置文件中的cache_dir时，都应该运行这个命令。如果我们在运行前一个命令之后运行squid，一切都会好起来的。
 ### What just happened?
 我们了解到，每当修改squid缓存目录时，都应该先运行squid -z，这样squid就可以正确地创建交换目录。
-## 1.7 地址已经使用（Address already in use）
-另一个常见的错误是地址已在使用中、无法绑定套接字或无法打开HTTP端口，如下所示：
+## 1.5 地址已被占用
+另一个常见的错误是地址已经被占用、无法绑定套接字或无法打开HTTP端口，如下所示：
 ```Shell
 2010/11/10 01:04:20| commBind: Cannot bind socket FD 16 to [::]:8080: (98) Address already in use
 FATAL: Cannot open HTTP Port
@@ -99,7 +99,7 @@ Squid Cache (Version 3.1.10): Terminated abnormally.
   fstat | grep 8080
   ```
 这将给我们一个涉及端口8080的连接列表。
-- 对于Freebsd和Dragonflybsd
+- 对于FreeBSD 和 DragonflyBSD
 用于确定在FreeBSD和DragonFlyBSD端口上侦听的程序的程序是sockstat，可以如下使用：
 ```Shell
 sockstat -4l | grep 8080
@@ -112,7 +112,7 @@ sockstat -4l | grep 8080
 如果我们在配置文件中使用IP和/或通配符配置同一端口两次，也可能发生此问题。所以，最好将配置文件也加倍
 ### What just happened
 我们了解了lsof、fstat和sockstat命令的用法，以找出在系统上特定端口上侦听的程序。我们还学习了当另一个程序在同一个端口上监听时，使Squid工作的可能方法。
-## 1.8 带下划线的URL导致无效的URL(URLs with underscore results in an invalid URL)
+## 1.6 带下划线的URL导致无效的URL(URLs with underscore results in an invalid URL)
 默认配置squid不会发生此错误，但当我们强制squid根据标准检查URL时，可能会发生此错误。在公共DNS系统中，不允许使用下划线。只有当本地解析程序被配置为允许时，它才对本地解析主机有效。关于这个问题有两个重要的指示。让我们看看它们
 #### 执行主机检查（Enforce hostname checks）
 强制squid根据标准检查每个主机名， 指令是check_hostname。squid默认表现不只是将主机名限制为标准情况，而且当check_hostname设置为on时，squid将强制检查非法的主机名的URL请求，这将导致无效的URL消息。为了解决这个问题，我们将check_hostname设置为off，这样squid就不会强制执行检查。
@@ -121,9 +121,9 @@ sockstat -4l | grep 8080
 >注意:
 >只有当check_name指令设置为on时，才能使用allow_underscore。
 
-## 1.9 squid会慢慢变慢(Squid becomes slow over time)
+## 1.7 squid会慢慢变慢(Squid becomes slow over time)
 当我们视图从系统中获取大量信息时，会出现这个问题。在大多数情况下，发生这种情况是因为我们将cache-mem 设置的值太高，并且没有足够的内存供其他进程正常运行，使得整个系统内存不足。
-如前几章所述，cache_mem 是用于在主内存中缓存Web文档的内存量，而squid占用的总内存大于cache_mem，当cache_mem设置过高时，会影响squid的运行。
+如前几章所述，cache_mem 是用于在主内存中缓存Web文档的内存，而squid占用的总内存大于cache_mem，当cache_mem设置过高时，会影响squid的运行。
 
 我们可以通过以下三步来解决这个问题:
 - 1 除了操作系统和其他基本进程所消耗的内存之外,我们应该分析系统上可用的总内存。然后，我们应该相应地设置缓存内存，以便有足够的空闲内存供Squid和其他进程在不进行任何交换的情况下执行。
@@ -132,17 +132,17 @@ sockstat -4l | grep 8080
   memory_pools off
   ```
 - 3 我们知道squid在主内存上保存了所有在磁盘上缓存文件的索引。因此，磁盘缓存越大，内存中索引占用就越大，如果前面两种方法都不起作用，那么我们可以尝试减少缓存目录的大小。
-## 1.10 请求或者回复太大（The request or reply is too large）
+## 1.8 请求或者回复太大（The request or reply is too large）
 有时，客户机会定时的收到"The request or reply is too large"这样的错误信息，这样的错误时因为当回复/请求的头或者正文超过了允许的最大值时，会发生此错误。
 
 和这个错误相关的squid 配置文件指令是request_header_max_size、request_body_max_size、reply_header_max_size和reply_body_max_size ，合理的设置这些值就可以解决此问题。
-## 1.11 拒绝访问代理服务器(Access denied on the proxy server)
+## 1.9 拒绝访问代理服务器(Access denied on the proxy server)
 有时会遇到棘手的问题，比如，所有的客户通过我们的代理服务器访问运行我们代理服务器上的网站时，可能被拒绝。这是因为设置squid时，我们的ACL允许所有网络，但就是忘记了squid服务器的IP地址。因此，我们可以通过扩展squid提供的ACL来解决这个问题，包括给我们的代理服务器分配其他的IP地址。
 注意，在修改完ACL后要重新启动squid守护进程。
-## 1.12 到达同级代理服务器时连接被拒绝（Connection refused when reaching a sibling proxy server）
+## 1.10 到达同级代理服务器时连接被拒绝（Connection refused when reaching a sibling proxy server）
 当使用cache_peer 指令添加同级代理服务器时，如果我们恰好给同级代理服务器输入错误的HTTP端口，和正确的ICP端口，那么ICP通信正常使得我们的缓存以为配置是正确的。但是由于错误的HTTP端口将导致拒绝连接。即使我们的配置正确，并且我们的兄弟姐妹更改了他们的HTTP端口，也可能发生这种情况。再次检查HTTP端口将修复此解决方案。
 # 二、调试问题
-大多数情况下，我们会遇到众所周知的问题，这些问题是配置错误或操作系统限制的结果。因此，通过调整配置文件可以很容易地解决这些问题。但是，有时我们可能会遇到无法直接解决的问题，或者我们甚至无法通过查看日志文件来识别这些问题。
+大多数情况下，我们会遇到常见的问题，这些问题是配置错误或操作系统限制的结果。因此，通过调整配置文件可以很容易地解决这些问题。但是，有时我们可能会遇到无法直接解决的问题，或者我们甚至无法通过查看日志文件来识别这些问题。
 
 默认情况下，Squid只将基本信息记录到cache.log。为了检查或调试问题，我们需要增加日志的冗长性，以便Squid可以告诉我们更多它正在采取的操作，这可能帮助我们找到问题的根源。我们可以使用squid配置文件中的debug_options指令，方便地从squid提取有关其操作的信息。
 让我们看一下debug选项格式：
