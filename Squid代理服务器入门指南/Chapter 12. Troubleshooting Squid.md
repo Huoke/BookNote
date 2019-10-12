@@ -177,56 +177,57 @@ section 的值可以查看源码文件来确定，在大多数源文件中，我
 */
 ```
 上面的注释告诉我们，访问日志section号是46。在squid源代码的doc/debug-section s.txt中可以找到节号和相应的squid组件的列表。下表列出了Squid 3.1.10版的一些重要章节号：
-| Section number | squid组件 |
-| ---- | ---- |
-| 0 |  Announcement Server, Client Database, Debug Routines, DNS Resolver Daemon, UFS Store Dump Tool |
-| 1 | 主循环， 启动程序 |
-| 2 | Unlink Daemon | 
-| 3 | Configuration File Parsing, Configuration Settings |
-| 4 | Error Generation |
-| 6 | Disk I/O Routines |
-| 9 | File Transfer Protocol (FTP) |
-| 11 | Hypertext Transfer Protocol (HTTP) |
-| 12 | Internet Cache Protocol (ICP) |
-| 14 | IP Cache, IP Storage, and Handling |
-| 15 | Neighbor Routines |
-| 16 | Cache Manager Objects |
-| 17 | Request Forwarding |
-| 18 | Cache Manager Statistics |
-| 20 | Storage Manager, Storage Manager Heap-based replacement, Storage Manager Logging Functions, Storage Manager MD5 Cache Keys, Storage Manager Swapfile Metadata, Storage Manager Swapfile Unpacker, Storage Manager Swapin Functions, Storage Manager Swapout Functions, Store Rebuild Routines, Swap Dir base object |
-| 23 |  URL Parsing, URL Scheme parsing |
-| 28 | Access Control |
-| 29 | Authenticator, Negotiate Authenticator, NTLM Authenticator |
-| 31 | Hypertext Caching Protocol |
-| 32 | Asynchronous Disk I/O |
-| 34 |  Dnsserver interface |
-| 35 | FQDN Cache |
-| 44 | Peer Selection Algorithm |
-| 46 | Access Log |
-| 50 | Log file handling |
-| 51 | Filedescriptor Functions |
-| 55 | HTTP Header |
-| 56 | HTTP Message Body |
-| 57 | HTTP Status-line |
-| 58 | HTTP Reply (Response) |
-| 61 | Redirector |
-| 64 | HTTP Range Header |
-| 65 | HTTP Cache Control Header |
-| 66 | HTTP Header Tools |
-| 67 | String |
-| 68 | HTTP Content-Range Header |
-| 70 | Cache Digest |
-| 71 | Store Digest Manager |
-| 72 | Peer Digest Routines |
-| 73 | HTTP Request |
-| 74 | HTTP Message |
-| 76 | Internal Squid Object handling |
-| 78 | DNS lookups, DNS lookups; interacts with lib/rfc1035.c |
-| 79 | Disk IO Routines, Squid-side DISKD I/O functions, Squid-side Disk I/O functions, Storage Manager COSS Interface, Storage Manager UFS Interface |
-| 84 | Helper process maintenance |
-| 89 | NAT / IP Interception |
-| 90 | HTTP Cache Control Header, Storage Manager Client-Side Interface |
-| 92 | Storage File System |
+
+ section number | squid组件 
+:-: | :-:
+ 0 |  Announcement Server, Client Database, Debug Routines, DNS Resolver Daemon, UFS Store Dump Tool 
+ 1 | 主循环， 启动程序 
+ 2 | Unlink Daemon 
+ 3 | Configuration File Parsing, Configuration Settings 
+ 4 | Error Generation 
+ 6 | Disk I/O Routines 
+ 9 | File Transfer Protocol (FTP) 
+ 11 | Hypertext Transfer Protocol (HTTP) 
+ 12 | Internet Cache Protocol (ICP) 
+ 14 | IP Cache, IP Storage, and Handling 
+ 15 | Neighbor Routines 
+ 16 | Cache Manager Objects 
+ 17 | Request Forwarding 
+ 18 | Cache Manager Statistics 
+ 20 | Storage Manager, Storage Manager Heap-based replacement, Storage Manager Logging Functions, Storage Manager MD5 Cache Keys, Storage Manager Swapfile Metadata, Storage Manager Swapfile Unpacker, Storage Manager Swapin Functions, Storage Manager Swapout Functions, Store Rebuild Routines, Swap Dir base object 
+ 23 |  URL Parsing, URL Scheme parsing 
+ 28 | Access Control 
+ 29 | Authenticator, Negotiate Authenticator, NTLM Authenticator 
+ 31 | Hypertext Caching Protocol 
+ 32 | Asynchronous Disk I/O 
+ 34 |  Dnsserver interface 
+ 35 | FQDN Cache 
+ 44 | Peer Selection Algorithm 
+ 46 | Access Log 
+ 50 | Log file handling 
+ 51 | Filedescriptor Functions 
+ 55 | HTTP Header 
+ 56 | HTTP Message Body 
+ 57 | HTTP Status-line 
+ 58 | HTTP Reply (Response) 
+ 61 | Redirector 
+ 64 | HTTP Range Header 
+ 65 | HTTP Cache Control Header 
+ 66 | HTTP Header Tools 
+ 67 | String 
+ 68 | HTTP Content-Range Header 
+ 70 | Cache Digest 
+ 71 | Store Digest Manager 
+ 72 | Peer Digest Routines 
+ 73 | HTTP Request 
+ 74 | HTTP Message 
+ 76 | Internal Squid Object handling 
+ 78 | DNS lookups, DNS lookups; interacts with lib/rfc1035.c 
+ 79 | Disk IO Routines, Squid-side DISKD I/O functions, Squid-side Disk I/O functions, Storage Manager COSS Interface, Storage Manager UFS Interface
+ 84 | Helper process maintenance 
+ 89 | NAT / IP Interception 
+ 90 | HTTP Cache Control Header, Storage Manager Client-Side Interface 
+ 92 | Storage File System 
 ## 2.1 调试HTTP请求
 ```Shell
 debug_options ALL,1 11,5
