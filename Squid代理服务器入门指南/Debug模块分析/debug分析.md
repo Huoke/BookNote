@@ -20,6 +20,7 @@ _M_ALPHA是指DEC ALPHA（Alpha AXP）架构。所以一般情况下va_list所�
 ```C++
 #define _INTSIZEOF(n) ( (sizeof(n) + sizeof(int) - 1) & ~(sizeof(int) - 1) )
 ```
+简单来说就是输入的类型需要多少个sizeof(int)，这里假设为n，那么整个宏的值就是INTSIZEOF(Type)=n*sizeof(int)
 关于INTSIZEOF宏更多的解析请查看[c语言不定参数宏INTSIZEOF的由来](https://github.com/Huoke/BookNote/blob/master/Squid%E4%BB%A3%E7%90%86%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%85%A5%E9%97%A8%E6%8C%87%E5%8D%97/Debug%E6%A8%A1%E5%9D%97%E5%88%86%E6%9E%90/c%E8%AF%AD%E8%A8%80%E4%B8%8D%E5%AE%9A%E5%8F%82%E6%95%B0%E5%AE%8FINTSIZEOF%E7%9A%84%E7%94%B1%E6%9D%A5.md)
 ### VA_START宏，获取可变参数列表的第一个参数的地址（ap是类型为va_list的指针，v是可变参数最左边的参数）：
 ```C++
@@ -34,13 +35,13 @@ _M_ALPHA是指DEC ALPHA（Alpha AXP）架构。所以一般情况下va_list所�
 #define va_end(ap) ( ap = (va_list)0 )
 ```
 ## 用法
-（1）首先在函数里定义一具VA_LIST型的变量，这个变量是指向参数的指针；
+（1）首先在函数里定义一具va_list型的变量，这个变量是指向参数的指针；
 
-（2）然后用VA_START宏初始化刚定义的VA_LIST变量；
+（2）然后用va_start宏初始化刚定义的va_list变量；
 
-（3）然后用VA_ARG返回可变的参数，VA_ARG的第二个参数是你要返回的参数的类型（如果函数有多个可变参数的，依次调用VA_ARG获取各个参数）；
+（3）然后用va_arg返回可变的参数，va_arg的第二个参数是你要返回的参数的类型（如果函数有多个可变参数的，依次调用VA_ARG获取各个参数）；
 
-（4）最后用VA_END宏结束可变参数的获取。
+（4）最后用va_end宏结束可变参数的获取。
 
 ## 注意问题
 （1）可变参数的类型和个数完全由程序代码控制,它并不能智能地识别不同参数的个数和类型；
