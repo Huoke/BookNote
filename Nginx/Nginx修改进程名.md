@@ -65,12 +65,11 @@ int main(int argc , char *argv[])
 
 怎么修改进程名称
        
+  摘网上方法：
 
-       摘网上方法：
-
-       修改进程名称，只需要修改argv[0]指向的内存的值为所需要的值即可。
+  修改进程名称，只需要修改argv[0]指向的内存的值为所需要的值即可。
        
-       但是当我们要修改的值超过argv[0]所指向的内存空间大小时，再这样直接修改，就非常有可能覆盖掉environ的内容，这样就不得了。。从上面的图中，很容易就可以看出。这时候应该满足：
+   但是当我们要修改的值超过argv[0]所指向的内存空间大小时，再这样直接修改，就非常有可能覆盖掉environ的内容，这样就不得了。。从上面的图中，很容易就可以看出。这时候应该满足：
 
 ![](https://img-blog.csdn.net/20140312222238500?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvZnp5MDIwMQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
 
@@ -134,9 +133,10 @@ ngx_init_setproctitle(ngx_log_t *log)
  
     return NGX_OK;
 }
-```      
+```
+
       
-      完成上面的初始化后，就可以放心修改argv[0]的内容，然后看下具体的ngx_setproctitle()函数。。
+完成上面的初始化后，就可以放心修改argv[0]的内容，然后看下具体的ngx_setproctitle()函数...
       
 ```c
 void
