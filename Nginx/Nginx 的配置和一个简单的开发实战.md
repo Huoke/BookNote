@@ -68,4 +68,25 @@ Nginx的配置文件是以block(块)的形式组织的，一个block通常使用
 
 
 
+## 1.2、Nginx模块工作原理概述
+
+（Nginx本身支持多种模块，如HTTP模块、EVENT模块和MAIL模块，本文只讨论HTTP模块）
+
+Nginx本身做的工作实际很少，当它接到一个HTTP请求时，它仅仅是通过查找配置文件将此次请求映射到一个location block，而此location中所配置的各个指令则会启动不同的模块去完成工作，因此模块可以看做Nginx真正的劳动工作者。
+
+通常一个location中的指令会涉及一个handler模块和多个filter模块（当然，多个location可以复用同一个模块）。
+
+handler模块负责处理请求，完成响应内容的生成，而filter模块对响应内容进行处理。因此Nginx模块开发分为handler开发和filter开发（本文不考虑load-balancer模块）。下图展示了一次常规请求和响应的过程
+
+![](https://images.cnblogs.com/cnblogs_com/leoo2sk/201104/201104171720507387.png)
+
+# 二、Nginx模块开发简单实战
+
+下面文件展示一个简单的Nginx模块开发全过程， 我们开发一个叫 echo 的 handler 模块，这个模块功能非常简单， 它接收“echo”指令，指令可指定一个字符串参数，模块会输出这个字符串作为HTTP响应。例如，做如下配置：
+```xml
+  location /echo {
+       echo  "hello world";
+  }
+```
+当我们通过浏览器访问 http://hostname/echo时会输出 hello nginx。
 
