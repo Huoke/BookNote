@@ -1,4 +1,5 @@
 # 一、Nginx 的配置
+
 ## 1.1、Nginx的配置基本结构
 
 配置文件可以看做是Nginx的灵魂，Nginx服务在启动时会读入配置文件，后续的一切动作行为都是按照配置文件中的指令进行的，所以如果将Nginx本身看做一个计算机，那么Nginx的配置文件可以看成是全部的程序指令。
@@ -45,4 +46,26 @@ Nginx的配置文件是以block(块)的形式组织的，一个block通常使用
 在main层级下可以有event、http等层级。
 
 在http层中又会有server block ； 在server block中可以包含location block。
+
+
+每个层级可以有自己的指令(directive)，例如 **worker_processes 是一个main层级指令, 它指定Nginx服务的worker进程数量。** 有的指令只能在一个层级中配置， 如 worker_processes 只能存在于main层中。
+
+而又的指令可以存在于多个层级，在这种情况下，子block会继承父block的配置，同时如果子block配置了与父block不同的指令，则会覆盖掉父block的配置。
+
+**指令的格式是： “参数1  参数2 参数3 ...参数N; ”，** 注意参数间可用任意数量空格分隔，最后要加分号。
+
+在开发Nginx HTTP扩展模块过程中，需要特别注意的是main、server和location三个层级，因为扩展模块通常允许指定新的配置指令在这三个层级中。
+
+最后是配置文件中可以包含配置文件，如上面配置文件中"include mime.types" 就包含了mime.types这个配置文件，此文件指定了各种HTTP Content-type。
+
+
+一般来说，一个server block表示一个Host， 而里面的一个location则代表一个路由映射规则, 这两个 block 可以说是 HTTP 配置的核心。
+
+
+下图是Nginx配置文件通常结构图:
+
+[](https://images.cnblogs.com/cnblogs_com/leoo2sk/201104/201104172212324656.png)
+
+
+
 
