@@ -92,9 +92,34 @@ handler模块负责处理请求，完成响应内容的生成，而filter模块�
 
 直观来看，要实现这个功能需要三步：
 
-- 1、读入配置文件中echo指令及其参数；
-- 2、进行HTTP包装（添加HTTP头等工作）；
+- 1、读入配置文件中echo指令及其参数。
+- 2、进行HTTP包装（添加HTTP头等工作）。
 - 3、将结果返回给客户端。
 
 下面本文将分部介绍整个模块的开发过程。
+
+## 2.1、定义模块配置结构
+
+首先我们需要一个结构用于存储从配置文件中读进来的相关指令参数，即模块配置信息结构。
+
+根据Nginx模块开发规则，这个结构的命名规则为 **ngx_http_[module-name]_[main|srv|loc]_conf_t。** 
+
+其中main、srv和loc分别用于表示同一模块在三层block中的配置信息。
+
+这里我们的echo模块只需要运行在loc层级下，需要存储一个字符串参数，因此我们可以定义如下的模块配置：
+
+```c
+typedef struct {
+   ngx_str_t  ed;
+} ngx_http_echo_loc_conf_t;
+```
+
+结构体中的ed用来存储echo指令指定的需要输出的字符串。注意这里的ed的类型，在Nginx模块开发中使用ngx_str_t类型表示字符串，这个类型定义在core/ngx_string中：
+```c
+typedef struct {
+    size_t  len;
+    
+    u_char  *data;
+ } ngx_str_t;
+```
 
