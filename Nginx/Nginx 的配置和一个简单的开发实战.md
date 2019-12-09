@@ -64,7 +64,7 @@ Nginx的配置文件是以block(块)的形式组织的，一个block通常使用
 
 下图是Nginx配置文件通常结构图:
 
-[](https://images.cnblogs.com/cnblogs_com/leoo2sk/201104/201104172212324656.png)
+![](https://images.cnblogs.com/cnblogs_com/leoo2sk/201104/201104172212324656.png)
 
 
 
