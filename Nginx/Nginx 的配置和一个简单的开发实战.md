@@ -229,3 +229,4 @@ ngx_command_t 是ngx_command_s的一个别称（Nginx习惯于使用“_s”后�
      return NGX_CONF_OK;
   }
 ```
+这个函数除了调用 ngx_conf_set_str_slot转化echo指令的参数外，还将修改了核心模块配置（也就是这个location的配置），将其handler替换为我们编写的handler：ngx_http_echo_handler。这样就屏蔽了此location的默认handler，使用ngx_http_echo_handler产生HTTP响应。
