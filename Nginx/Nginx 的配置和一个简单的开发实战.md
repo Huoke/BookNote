@@ -423,3 +423,246 @@ handler会接收一个ngx_http_request_t指针类型的参数，这个参数指�
       /* ... */
   }
 ```
+由于 ngx_http_request_s 定义比较长，这里我只截取了一部分。
+
+可以看到里面有诸如uri，args和request_body等HTTP常用信息。
+
+这里需要特别注意的几个字段是headers_in、headers_out和chain，它们分别表示request header、response header和输出数据缓冲区链表（缓冲区链表是Nginx I/O中的重要内容，后面会单独介绍）。
+
+**第一步: 获取模块配置信息，这一块只要简单使用ngx_http_get_module_loc_conf就可以了。**
+```C
+#define ngx_http_get_module_main_conf(r, module)                             \
+    (r)->main_conf[module.ctx_index]
+#define ngx_http_get_module_srv_conf(r, module)  (r)->srv_conf[module.ctx_index]
+#define ngx_http_get_module_loc_conf(r, module)  (r)->loc_conf[module.ctx_index]
+```
+
+**第二步: 功能逻辑，因为echo模块非常简单，只是简单输出一个字符串，所以这里没有功能逻辑代码。**
+
+**第三步: 设置response header。Header内容可以通过填充headers_out实现，我们这里只设置了Content-type和Content-length等基本内容，ngx_http_headers_out_t 定义了所有可以设置的 HTTP Response Header信息：**
+```C
+typedef struct {
+    ngx_list_t                        headers;
+ 
+    ngx_uint_t                        status;
+    ngx_str_t                         status_line;
+ 
+    ngx_table_elt_t                  *server;
+    ngx_table_elt_t                  *date;
+    ngx_table_elt_t                  *content_length;
+    ngx_table_elt_t                  *content_encoding;
+    ngx_table_elt_t                  *location;
+    ngx_table_elt_t                  *refresh;
+    ngx_table_elt_t                  *last_modified;
+    ngx_table_elt_t                  *content_range;
+    ngx_table_elt_t                  *accept_ranges;
+    ngx_table_elt_t                  *www_authenticate;
+    ngx_table_elt_t                  *expires;
+    ngx_table_elt_t                  *etag;
+ 
+    ngx_str_t                        *override_charset;
+ 
+    size_t                            content_type_len;
+    ngx_str_t                         content_type;
+    ngx_str_t                         charset;
+    u_char                           *content_type_lowcase;
+    ngx_uint_t                        content_type_hash;
+ 
+    ngx_array_t                       cache_control;
+ 
+    off_t                             content_length_n;
+    time_t                            date_time;
+    time_t                            last_modified_time;
+} ngx_http_headers_out_t;
+```
+这里并不包含所有HTTP头信息，如果需要可以使用 agentzh（春来）开发的Nginx模块HttpHeadersMore在指令中指定更多的Header头信息。
+
+设置好头信息后使用 ngx_http_send_heade r就可以将头信息输出，ngx_http_send_header 接受一个 ngx_http_request_t 类型的参数。
+
+**第四步：也是最重要的一步是输出 Response body。这里首先要了解Nginx的I/O机制，Nginx允许handler一次产生一组输出，可以产生多次，Nginx将输出组织成一个单链表结构，链表中的每个节点是一个chain_t，定义在core/ngx_buf.h：**
+```C
+  struct ngx_chain_s {
+      ngx_buf_t    *buf;
+      ngx_chain_t  *next;
+  };
+```
+其中ngx_chain_t是ngx_chain_s的别名，buf为某个数据缓冲区的指针，next指向下一个链表节点，可以看到这是一个非常简单的链表。ngx_buf_t的定义比较长而且很复杂，这里就不贴出来了，请自行参考core/ngx_buf.h。ngx_but_t中比较重要的是pos和last，分别表示要缓冲区数据在内存中的起始地址和结尾地址，这里我们将配置中字符串传进去，last_buf是一个位域，设为1表示此缓冲区是链表中最后一个元素，为0表示后面还有元素。因为我们只有一组数据，所以缓冲区链表中只有一个节点，如果需要输入多组数据可将各组数据放入不同缓冲区后插入到链表。下图展示了Nginx缓冲链表的结构：
+
+![](https://images.cnblogs.com/cnblogs_com/leoo2sk/201104/201104191155025791.png)
+
+缓冲数据准备好后，用ngx_http_output_filter就可以输出了（会送到filter进行各种过滤处理）。ngx_http_output_filter的第一个参数为ngx_http_request_t结构，第二个为输出链表的起始地址&out。ngx_http_out_put_filter会遍历链表，输出所有数据。
+
+以上就是handler的所有工作，请对照描述理解上面贴出的handler代码。
+
+## 2.5、组合 Nginx Module
+上面完成了Nginx模块各种组件的开发下面就是将这些组合起来了。一个Nginx模块被定义为一个ngx_module_t结构，这个结构的字段很多，不过开头和结尾若干字段一般可以通过Nginx内置的宏去填充，下面是我们echo模块的模块主体定义：
+```C
+    ngx_module_t  ngx_http_echo_module = {
+      NGX_MODULE_V1,
+      &ngx_http_echo_module_ctx,             /* module context */
+      ngx_http_echo_commands,                /* module directives */
+      NGX_HTTP_MODULE,                       /* module type */
+      NULL,                                  /* init master */
+      NULL,                                  /* init module */
+      NULL,                                  /* init process */
+      NULL,                                  /* init thread */
+      NULL,                                  /* exit thread */
+      NULL,                                  /* exit process */
+      NULL,                                  /* exit master */
+      NGX_MODULE_V1_PADDING
+    };
+```
+开头和结尾分别用NGX_MODULE_V1和NGX_MODULE_V1_PADDING 填充了若干字段，就不去深究了。这里主要需要填入的信息从上到下以依次为context、指令数组、模块类型以及若干特定事件的回调处理函数（不需要可以置为NULL），其中内容还是比较好理解的，注意我们的echo是一个HTTP模块，所以这里类型是NGX_HTTP_MODULE，其它可用类型还有NGX_EVENT_MODULE（事件处理模块）和NGX_MAIL_MODULE（邮件模块）。
+
+这样，整个echo模块就写好了，下面给出echo模块的完整代码：
+```C
+  /*
+   * Copyright (C) Eric Zhang
+   */
+ 
+   #include <ngx_config.h>
+   #include <ngx_core.h>
+   #include <ngx_http.h>
+ 
+  /* Module config */
+   typedef struct {
+       ngx_str_t  ed;
+   } ngx_http_echo_loc_conf_t;
+ 
+   static char *ngx_http_echo(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+   static void *ngx_http_echo_create_loc_conf(ngx_conf_t *cf);
+   static char *ngx_http_echo_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
+ 
+/* Directives */
+   static ngx_command_t  ngx_http_echo_commands[] = {
+       { ngx_string("echo"),
+         NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+         ngx_http_echo,
+         NGX_HTTP_LOC_CONF_OFFSET,
+         offsetof(ngx_http_echo_loc_conf_t, ed),
+         NULL 
+         },
+ 
+         ngx_null_command
+    };
+ 
+/* Http context of the module */
+static ngx_http_module_t  ngx_http_echo_module_ctx = {
+    NULL,                                  /* preconfiguration */
+    NULL,                                  /* postconfiguration */
+ 
+    NULL,                                  /* create main configuration */
+    NULL,                                  /* init main configuration */
+ 
+    NULL,                                  /* create server configuration */
+    NULL,                                  /* merge server configuration */
+ 
+    ngx_http_echo_create_loc_conf,         /* create location configration */
+    ngx_http_echo_merge_loc_conf           /* merge location configration */
+};
+ 
+/* Module */
+ngx_module_t  ngx_http_echo_module = {
+    NGX_MODULE_V1,
+    &ngx_http_echo_module_ctx,             /* module context */
+    ngx_http_echo_commands,                /* module directives */
+    NGX_HTTP_MODULE,                       /* module type */
+    NULL,                                  /* init master */
+    NULL,                                  /* init module */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
+};
+ 
+/* Handler function */
+static ngx_int_t
+ngx_http_echo_handler(ngx_http_request_t *r)
+{
+    ngx_int_t rc;
+    ngx_buf_t *b;
+    ngx_chain_t out;
+ 
+    ngx_http_echo_loc_conf_t *elcf;
+    elcf = ngx_http_get_module_loc_conf(r, ngx_http_echo_module);
+ 
+    if(!(r->method & (NGX_HTTP_HEAD|NGX_HTTP_GET|NGX_HTTP_POST)))
+    {
+        return NGX_HTTP_NOT_ALLOWED;
+    }
+     
+    r->headers_out.content_type.len = sizeof("text/html") - 1;
+    r->headers_out.content_type.data = (u_char *) "text/html";
+ 
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = elcf->ed.len;
+ 
+    if(r->method == NGX_HTTP_HEAD)
+    {
+        rc = ngx_http_send_header(r);
+        if(rc != NGX_OK)
+        {
+            return rc;
+        }
+    }
+ 
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    if(b == NULL)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "Failed to allocate response buffer.");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    out.buf = b;
+    out.next = NULL;
+ 
+    b->pos = elcf->ed.data;
+    b->last = elcf->ed.data + (elcf->ed.len);
+    b->memory = 1;
+    b->last_buf = 1;
+    rc = ngx_http_send_header(r);
+    if(rc != NGX_OK)
+    {
+        return rc;
+    }
+    return ngx_http_output_filter(r, &out);
+}
+ 
+static char *
+ngx_http_echo(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t  *clcf;
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+    clcf->handler = ngx_http_echo_handler;
+    ngx_conf_set_str_slot(cf,cmd,conf);
+     
+    return NGX_CONF_OK;
+}
+ 
+static void *
+ngx_http_echo_create_loc_conf(ngx_conf_t *cf)
+{
+    ngx_http_echo_loc_conf_t  *conf;
+ 
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_echo_loc_conf_t));
+    if (conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+    conf->ed.len = 0;
+    conf->ed.data = NULL;
+ 
+    return conf;
+}
+ 
+static char *
+ngx_http_echo_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
+{
+    ngx_http_echo_loc_conf_t *prev = parent;
+    ngx_http_echo_loc_conf_t *conf = child;
+ 
+    ngx_conf_merge_str_value(conf->ed, prev->ed, "");
+ 
+    return NGX_CONF_OK;
+}
+```
