@@ -230,3 +230,131 @@ ngx_command_t 是ngx_command_s的一个别称（Nginx习惯于使用“_s”后�
   }
 ```
 这个函数除了调用 ngx_conf_set_str_slot转化echo指令的参数外，还将修改了核心模块配置（也就是这个location的配置），将其handler替换为我们编写的handler：ngx_http_echo_handler。这样就屏蔽了此location的默认handler，使用ngx_http_echo_handler产生HTTP响应。
+# 2.3、创建合并配置信息
+下一步是定义模块Context。
+
+这里首先需要定义一个 ngx_http_module_t类型的结构体变量，命名规则为ngx_http_[module-name]_module_ctx，这个结构主要用于定义各个Hook函数。下面是echo模块的context结构：
+```C
+  static ngx_http_module_t  ngx_http_echo_module_ctx = {
+      NULL,                                  /* preconfiguration */
+      NULL,                                  /* postconfiguration */
+ 
+      NULL,                                  /* create main configuration */
+      NULL,                                  /* init main configuration */
+ 
+      NULL,                                  /* create server configuration */
+      NULL,                                  /* merge server configuration */
+ 
+      ngx_http_echo_create_loc_conf,         /* create location configration */
+      ngx_http_echo_merge_loc_conf           /* merge location configration */
+  };
+```
+可以看到一共有8个Hook注入点，分别会在不同时刻被Nginx调用，由于我们的模块仅仅用于location域，这里将不需要的注入点设为NULL即可。其中create_loc_conf用于初始化一个配置结构体，如为配置结构体分配内存等工作；merge_loc_conf用于将其父block的配置信息合并到此结构体中，也就是实现配置的继承。这两个函数会被Nginx自动调用。注意这里的命名规则：ngx_http_[module-name]_[create|merge]_[main|srv|loc]_conf。
+
+下面是echo模块这个两个函数的代码：
+```C
+  static void *
+  ngx_http_echo_create_loc_conf(ngx_conf_t *cf)
+  {
+      ngx_http_echo_loc_conf_t  *conf;
+ 
+      conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_echo_loc_conf_t));
+      if (conf == NULL) {
+           return NGX_CONF_ERROR;
+      }
+      conf->ed.len = 0;
+      conf->ed.data = NULL;
+ 
+      return conf;
+  }
+ 
+  static char *
+  ngx_http_echo_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
+  {
+      ngx_http_echo_loc_conf_t *prev = parent;
+      ngx_http_echo_loc_conf_t *conf = child;
+ 
+      ngx_conf_merge_str_value(conf->ed, prev->ed, "");
+ 
+      return NGX_CONF_OK;
+  }
+```
+其中 ngx_pcalloc用于在Nginx内存池中分配一块空间，是pcalloc的一个包装。使用ngx_pcalloc分配的内存空间不必手工free，Nginx会自行管理，在适当是否释放。
+
+create_loc_conf 新建一个 ngx_http_echo_loc_conf_t，分配内存，并初始化其中的数据，然后返回这个结构的指针；merge_loc_conf 将父block域的配置信息合并到 create_loc_conf新建的配置结构体中。
+
+其中 ngx_conf_merge_str_value不是一个函数，而是一个宏，其定义在core/ngx_conf_file.h中：
+```C
+  #define ngx_conf_merge_str_value(conf, prev, default)                        \
+      if (conf.data == NULL) {                                                 \
+          if (prev.data) {                                                     \
+              conf.len = prev.len;                                             \
+              conf.data = prev.data;                                           \
+          } else {                                                             \
+              conf.len = sizeof(default) - 1;                                  \
+              conf.data = (u_char *) default;                                  \
+          }                                                                    \
+      }
+```
+同时可以看到，core/ngx_conf_file.h还定义了很多merge value的宏用于merge各种数据。它们的行为比较相似：使用prev填充conf，如果prev的数据为空则使用default填充。
+
+## 2.4、编写Handler
+
+下面的工作是编写handler。handler可以说是模块中真正干活的代码，它主要有以下四项职责：
+1. 读入模块配置。
+2. 处理功能业务。
+3. 生产 http header。
+4. 生产 http body。
+下面先贴出echo模块的代码，然后通过分析代码的方式介绍如何实现这四步。这一块的代码比较复杂:
+```C
+static ngx_int_t
+ngx_http_echo_handler(ngx_http_request_t *r)
+{
+    ngx_int_t rc;
+    ngx_buf_t *b;
+    ngx_chain_t out;
+ 
+    ngx_http_echo_loc_conf_t *elcf;
+    elcf = ngx_http_get_module_loc_conf(r, ngx_http_echo_module);
+ 
+    if(!(r->method & (NGX_HTTP_HEAD|NGX_HTTP_GET|NGX_HTTP_POST)))
+    {
+        return NGX_HTTP_NOT_ALLOWED;
+    }
+     
+    r->headers_out.content_type.len = sizeof("text/html") - 1;
+    r->headers_out.content_type.data = (u_char *) "text/html";
+ 
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = elcf->ed.len;
+ 
+    if(r->method == NGX_HTTP_HEAD)
+    {
+        rc = ngx_http_send_header(r);
+        if(rc != NGX_OK)
+        {
+            return rc;
+        }
+    }
+ 
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    if(b == NULL)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "Failed to allocate response buffer.");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    out.buf = b;
+    out.next = NULL;
+ 
+    b->pos = elcf->ed.data;
+    b->last = elcf->ed.data + (elcf->ed.len);
+    b->memory = 1;
+    b->last_buf = 1;
+    rc = ngx_http_send_header(r);
+    if(rc != NGX_OK)
+    {
+        return rc;
+    }
+    return ngx_http_output_filter(r, &out);
+}
+```
