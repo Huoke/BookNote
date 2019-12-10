@@ -358,3 +358,68 @@ ngx_http_echo_handler(ngx_http_request_t *r)
     return ngx_http_output_filter(r, &out);
 }
 ```
+handler会接收一个ngx_http_request_t指针类型的参数，这个参数指向一个ngx_http_request_t结构体，此结构体存储了这次HTTP请求的一些信息，这个结构定义在http/ngx_http_request.h中：
+```C
+  struct ngx_http_request_s {
+      uint32_t                          signature;         /* "HTTP" */
+ 
+      ngx_connection_t                 *connection;
+ 
+      void                            **ctx;
+      void                            **main_conf;
+      void                            **srv_conf;
+      void                            **loc_conf;
+ 
+      ngx_http_event_handler_pt         read_event_handler;
+      ngx_http_event_handler_pt         write_event_handler;
+ 
+  #if (NGX_HTTP_CACHE)
+      ngx_http_cache_t                 *cache;
+  #endif
+ 
+      ngx_http_upstream_t              *upstream;
+      ngx_array_t                      *upstream_states;
+                                           /* of ngx_http_upstream_state_t */
+ 
+      ngx_pool_t                       *pool;
+      ngx_buf_t                        *header_in;
+ 
+      ngx_http_headers_in_t             headers_in;
+      ngx_http_headers_out_t            headers_out;
+ 
+      ngx_http_request_body_t          *request_body;
+ 
+      time_t                            lingering_time;
+      time_t                            start_sec;
+      ngx_msec_t                        start_msec;
+ 
+      ngx_uint_t                        method;
+      ngx_uint_t                        http_version;
+ 
+      ngx_str_t                         request_line;
+      ngx_str_t                         uri;
+      ngx_str_t                         args;
+      ngx_str_t                         exten;
+      ngx_str_t                         unparsed_uri;
+ 
+      ngx_str_t                         method_name;
+      ngx_str_t                         http_protocol;
+ 
+      ngx_chain_t                      *out;
+      ngx_http_request_t               *main;
+      ngx_http_request_t               *parent;
+      ngx_http_postponed_request_t     *postponed;
+      ngx_http_post_subrequest_t       *post_subrequest;
+      ngx_http_posted_request_t        *posted_requests;
+ 
+      ngx_http_virtual_names_t         *virtual_names;
+ 
+      ngx_int_t                         phase_handler;
+      ngx_http_handler_pt               content_handler;
+      ngx_uint_t                        access_code;
+ 
+      ngx_http_variable_value_t        *variables;
+     
+      /* ... */
+  }
+```
