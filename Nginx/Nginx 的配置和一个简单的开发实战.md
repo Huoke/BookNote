@@ -82,17 +82,17 @@ handler模块负责处理请求，完成响应内容的生成，而filter模块�
 
 # 二、Nginx模块开发简单实战
 
-下面文件展示一个简单的Nginx模块开发全过程， 我们开发一个叫 echo 的 handler 模块，这个模块功能非常简单， 它接收“echo”指令，指令可指定一个字符串参数，模块会输出这个字符串作为HTTP响应。例如，做如下配置：
+下面文件展示一个简单的 Nginx模块开发全过程， 我们开发一个叫 echo 的 handler 模块，这个模块功能非常简单， 它接收“echo”指令，指令可指定一个字符串参数，模块会输出这个字符串作为HTTP响应。例如，做如下配置：
 ```xml
   location /echo {
-       echo  "hello world";
+       echo  "hello nginx";
   }
 ```
 当我们通过浏览器访问 http://hostname/echo时会输出 hello nginx。
 
 直观来看，要实现这个功能需要三步：
 
-- 1、读入配置文件中echo指令及其参数。
+- 1、读入配置文件中 echo 指令及其参数。
 - 2、进行HTTP包装（添加HTTP头等工作）。
 - 3、将结果返回给客户端。
 
@@ -100,9 +100,9 @@ handler模块负责处理请求，完成响应内容的生成，而filter模块�
 
 ## 2.1、定义模块配置结构
 
-首先我们需要一个结构用于存储从配置文件中读进来的相关指令参数，即模块配置信息结构。
+首先我们需要一个结构来存储从配置文件中读进来的相关指令参数———即模块配置信息结构。
 
-根据Nginx模块开发规则，这个结构的命名规则为 **ngx_http_[module-name]_[main|srv|loc]_conf_t。** 
+根据 Nginx模块开发规则，这个结构的命名规则为 **ngx_http_[module-name]_[main|srv|loc]_conf_t。** 
 
 其中main、srv和loc分别用于表示同一模块在三层block中的配置信息。
 
@@ -123,3 +123,75 @@ typedef struct {
  } ngx_str_t;
 ```
 
+其中两个字段分别表示字符串的长度和数据起始地址。注意在Nginx源代码中对数据类型进行了别称定义，如ngx_int_t为intptr_t的别称，为了保持一致，在开发Nginx模块时也应该使用这些Nginx源码定义的类型而不要使用C原生类型。除了ngx_str_t外，其它三个常用的nginx type分别为：
+
+```c
+  typedef intptr_t        ngx_int_t;
+  typedef uintptr_t       ngx_uint_t;
+  typedef intptr_t        ngx_flag_t;
+```
+
+具体定义请参看core/ngx_config.h。关于intptr_t请参考C99中的stdint.h或者[http://linux.die.net/man/3/intptr_t。](http://linux.die.net/man/3/intptr_t)
+
+# 2.2、定义指令
+一个 Nginx模块往往接收一至多个指令，echo模块接收一个指令“echo”。
+
+Nginx模块使用一个ngx_command_t数组表示模块所能接收的所有z指令，其中每一个元素表示一个条指令。
+
+ngx_command_t 是ngx_command_s的一个别称（Nginx习惯于使用“_s”后缀命名结构体，然后typedef一个同名“_t”后缀名称作为此结构体的类型名），ngx_command_s定义在core/ngx_config_file.h中：
+```C
+  struct ngx_command_s {
+      ngx_str_t             name;
+      ngx_uint_t            type;
+      char               *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+      ngx_uint_t            conf;
+      ngx_uint_t            offset;
+      void                 *post;
+  };
+```
+
+- name：指令名称
+
+- type：使用掩码标志位方式配置指令参数，相关可用type定义在core/ngx_config_file.h中：
+```C
+  #define NGX_CONF_NOARGS      0x00000001
+  #define NGX_CONF_TAKE1       0x00000002
+  #define NGX_CONF_TAKE2       0x00000004
+  #define NGX_CONF_TAKE3       0x00000008
+  #define NGX_CONF_TAKE4       0x00000010
+  #define NGX_CONF_TAKE5       0x00000020
+  #define NGX_CONF_TAKE6       0x00000040
+  #define NGX_CONF_TAKE7       0x00000080
+ 
+  #define NGX_CONF_MAX_ARGS    8
+ 
+  #define NGX_CONF_TAKE12      (NGX_CONF_TAKE1|NGX_CONF_TAKE2)
+  #define NGX_CONF_TAKE13      (NGX_CONF_TAKE1|NGX_CONF_TAKE3)
+ 
+  #define NGX_CONF_TAKE23      (NGX_CONF_TAKE2|NGX_CONF_TAKE3)
+ 
+  #define NGX_CONF_TAKE123     (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3)
+  #define NGX_CONF_TAKE1234    (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3   \
+                                |NGX_CONF_TAKE4)
+ 
+  #define NGX_CONF_ARGS_NUMBER 0x000000ff
+  #define NGX_CONF_BLOCK       0x00000100
+  #define NGX_CONF_FLAG        0x00000200
+  #define NGX_CONF_ANY         0x00000400
+  #define NGX_CONF_1MORE       0x00000800
+  #define NGX_CONF_2MORE       0x00001000
+  #define NGX_CONF_MULTI       0x00002000
+```
+其中 NGX_CONF_NOARGS 表示此指令不接受参数，NGX_CON_F_TAKE1-7 表示精确接收1-7个，NGX_CONF_TAKE12表示接受1或2个参数，NGX_CONF_1MORE表示至少一个参数，NGX_CONF_FLAG表示接受“on|off”……
+
+- set: 一个函数指针，用于指定一个参数转化函数，这个函数一般是将配置文件中相关指令的参数转化成需要的格式并存入配置结构体。
+   Nginx 预定义了一些转换函数，可以方便我们调用，这些函数定义在core/ngx_conf_file.h中，一般以“_slot”结尾，
+   
+   例如ngx_conf_set_flag_slot将“on或off”转换为“1或0”，
+   
+   再如ngx_conf_set_str_slot将裸字符串转化为ngx_str_t。
+
+- conf: 用于指定 Nginx相应配置文件内存真实地址，一般可以通过内置常量指定，如NGX_HTTP_LOC_CONF_OFFSET。
+- offset：指定此条指令的参数的偏移量。
+
+下面是echo模块的指令定义：
