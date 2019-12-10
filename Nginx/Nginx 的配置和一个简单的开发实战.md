@@ -195,3 +195,37 @@ ngx_command_t 是ngx_command_s的一个别称（Nginx习惯于使用“_s”后�
 - offset：指定此条指令的参数的偏移量。
 
 下面是echo模块的指令定义：
+```C
+  static ngx_command_t  ngx_http_echo_commands[] = {
+      {
+          ngx_string("echo"),
+      
+          NGX_HTTP_LOC_CONF_|NGX_CONF_TAKE1,
+      
+          ngx_http_echo,
+      
+          offsetof(ngx_http_echo_loc_conf_t, ed),
+      
+          NULL
+      },
+      
+      ngx_null_command
+  };
+```
+指令数组名命名规则 ngx_http_[module-name]_commands, 注意数组最后一个元素是 ngx_null_command 结束。
+
+参数转化函数的代码如下：
+```C
+  static char* ngx_http_echo(ngx_cong_t* cf, ngx_command_t* cmd, void* conf) {
+     
+     ngx_http_core_loc_conf_t *clcf;
+     
+     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+     
+     clcf->handler = ngx_http_echo_handler;
+     
+     ngx_conf_set_str_slot(cf,cmd,conf);
+     
+     return NGX_CONF_OK;
+  }
+```
