@@ -666,3 +666,63 @@ ngx_http_echo_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 ```
+# 三、Nginx模块的安装
+Nginx 不支持动态链接模块，所以安装模块需要将模块代码与Nginx源代码进行重新编译。安装模块的步骤如下：
+
+- 1、编写模块config文件，这个文件需要放在和模块源代码文件放在同一目录下。文件内容如下：
+```vb
+  ngx_addon_name=模块完整名称
+  HTTP_MODULES="$HTTP_MODULES 模块完整名称"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/源代码文件名"
+```
+- 2、进入Nginx源代码，使用下面命令编译安装
+```vb
+   ./configure  --prefix=安装目录  --add-module=模块源代码文件目录
+   make
+   make install
+```
+
+这样就完成了安装了，例如，我的源代码文件放在/opt/nginx/src/mytest下，我的config文件为:
+```vb
+   ngx_addon_name=ngx_http_echo_module
+   HTTP_MODULES="$HTTP_MODULES ngx_http_echo_module"
+   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_http_echo_module.c"
+```
+编译安装命令：
+```vb
+./configure --prefix=/usr/local/nginx --add-module=/opt/nginx/src/mytest
+make
+sudo make install
+```
+
+这样echo模块就被安装在我的Nginx上了，下面测试一下， 修改配置文件，增加一下一项配置:
+```vb
+   location /echo {
+       echo "This is my first nginx module!!!";
+   }
+```
+
+然后测试一下：
+```vb
+   curl -i http://localhost/echo
+```
+
+结果如下:
+
+![](https://images.cnblogs.com/cnblogs_com/leoo2sk/201104/201104191300415836.png)
+
+可以看到模块已经正常工作了，也可以在浏览器中打开网址，就可以看到结果：
+
+![](https://images.cnblogs.com/cnblogs_com/leoo2sk/201104/201104191300437830.png)
+
+# 四、深入学习
+本文只是简要介绍了Nginx模块的开发过程，由于篇幅的原因，不能面面俱到。因为目前Nginx的学习资料很少，如果读者希望更深入学习Nginx的原理及模块开发，那么阅读源代码是最好的办法。在Nginx源代码的core/下放有Nginx的核心代码，对理解Nginx的内部工作机制非常有帮助，http/目录下有Nginx HTTP相关的实现，http/module下放有大量内置http模块，可供读者学习模块的开发，另外在http://wiki.nginx.org/3rdPartyModules上有大量优秀的第三方模块，也是非常好的学习资料。
+
+如有意见建议或疑问欢迎发送邮件至ericzhang.buaa@gmail.com。希望本文对您有所帮助！！！
+
+# 五、参考文献
+[1] Evan Miller, Emiller's Guide To Nginx Module Development. http://www.evanmiller.org/nginx-modules-guide.html, 2009
+
+[2] http://wiki.nginx.org/Configuration
+
+[3] Clément Nedelcu, Nginx Http Server. Packt Publishing, 2010
