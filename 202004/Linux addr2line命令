@@ -1,0 +1,51 @@
+# 一、简介
+addr2line （它是标准的[NU Binutils](https://baike.baidu.com/item/gnu%20binutils/7761770?fr=aladdin)部分）
+是一个可以将指令的地址和可执行映像转换成文件名、 数名和源代码行数的工具。这种功能对于将跟踪地址转换成更有意义的内容来说简直是太棒了。
+
+# 二、选项
+```shell
+Usage: addr2line [option(s)] [addr(s)]
+ Convert addresses into line number/file name pairs.
+ If no addresses are specified on the command line, they will be read from stdin
+ The options are:
+  @<file>                Read options from <file>
+  -a --addresses         Show addresses
+  -b --target=<bfdname>  Set the binary file format
+  -e --exe=<executable>  Set the input file name (default is a.out)
+  -i --inlines           Unwind inlined functions
+  -j --section=<name>    Read section-relative offsets instead of addresses
+  -p --pretty-print      Make the output easier to read for humans
+  -s --basenames         Strip directory names
+  -f --functions         Show function names
+  -C --demangle[=style]  Demangle function names
+  -h --help              Display this information
+  -v --version           Display the program's version
+  ```
+ 要了解这个过程是怎样工作的，我们可以试验一个简单的交互式的例子。（我直接从 shell 中进行操作，因为这是最简单地展示这个过程的方法，如清单 4 所示。）
+ 
+ 这个示例 C 文件（test.c）是通过 cat 一个简单的应用程序实现的（也就是说，将标准输出的文本重定向到一个文件中）。
+ 
+ 然后使用 gcc 来编译这个文件，它会传递一些特殊的选项。
+ 首先，要（使用 -Wl 选项）通知链接器生成一个映像文件，并（使用 -g 选项）通知编译器生成调试符号。
+ 最终生成可执行文件 test。得到新的可执行应用程序之后，您就可以使用grep 工具在映像文件中查找 main 来寻找它的地址了。
+ 使用这个地址和 adr2line 工具，就可以判断出函数名（main）、源文件（/home/mtj/test/test.c）以及它在源文件中的行号（4）。
+
+在调用 adr2line 工具时，要使用 -e 选项来指定可执行映像是 test。通过使用 -f 选项，可以告诉工具输出函数名。
+```shell
+$ cat >> test.c
+#include <stdio.h>
+int main()
+{
+  printf("Hello World\n");
+  return 0;
+}
+<ctld-d>
+$ gcc -Wl,-Map=test.map -g -o test test.c
+$ grep main test.map
+	0x08048258		__libc_start_main@@GLIBC_2.0
+	0x08048258		main
+$ addr2line 0x08048258 -e test -f
+main
+/home/mtj/test/test.c:4
+$
+```
