@@ -1,0 +1,11 @@
+# findstr
+```vb
+findstr /s /i "max_worker" "*"
+```
+/s :当前目录下所有文件
+
+/i : 不区分大小写
+
+"max_worker" : 要查找的字符串
+
+"*" : 所有文件
