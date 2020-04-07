@@ -72,7 +72,7 @@
 |函数定义 | typedef void (*sighandler_t)(int); sighandler_t signal(int signum, sighandler_t handler);int sigaction(signum, const struct sigaction *act, struct sigaction* oldact);|
 |函数说明 |signal()会依参数signum指定的信号编号来设置该信号的处理函数。当指定的信号到达时就会跳转到参数handler指定的函数执行 。如果参数handler不是函数指针，则必须是下列两个常数之一：
  - SIG_IGN，忽略参数signum指定的信号。
- - SIG_DFL，将参数signum指定的信号重设为核心预设的信号处理方式。sigaction() 用于修改与指定信号相关联的处理函数，参数signum可以是SIGKILL和SIGSTOP之外的任何有效信号。|
+ - SIG_DFL，将参数signum指定的信号重设为核心预设的信号处理方式。sigaction() 用于修改与指定信号相关联的处理函数，参数signum可以是SIGKILL和SIGSTOP之外的任何有效信号。| 
 |返回值 | 执行成功函数signal则返回先前的信号处理函数指针，否则返回SIG_ERR(-1)。执行成功函数sigaction则返回0，否则-1|
 |附加说明 | 在信号发送跳转到自定的handler处理函数执行后，系统会自动将此处理函数换回原来系统预设的处理方式，也就是说signal函数每次设置具体的信号处理函数(非SIG_IGN)只能生效一次，每次在进程响应处理信号后，随即将信号处理函数恢复为默认处理方式。所以如果向多次以相同方式处理某个信号，通常的做法是，在响应函数开始，再次调用signal进行设置。但是这样会存在问题，那就是在信号发送之后到信号处理程序中调用signal函数之间有一个时间窗口。在此段时间中，可能发送另一次中断信号。第二个信号会造成执行默认动作，而对中断信号则是终止该进程。这种类型的程序段在大多数情况下回正常工作，使得我们认为它们正确，而实际上却并不是如此。因此，对于需要多次生效的信号处理设置，应该采用另外一个函数sigaction。
  
