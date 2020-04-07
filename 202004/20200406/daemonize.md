@@ -56,7 +56,25 @@
 
 表2-2 setsid函数
 
+| 主题 | 内容 |
+|---- | ----|
+|表头文件 | #include<sys/types.h> #include <unistd.h> |
+| 定义函数 | pid_t setsid(void) |
+| 函数说明 | 如果调用此函数的进程不是一个进程组的组长，则此函数创建一个新会话，结果为：1）此进程变成新会话组的会话组长(session leader,会话组首进程是创建该会话组的进程)。此进程是该新会话组中的唯一进程。2）此进程称为一个新进程组的组长进程。新进程组ID是此调用进程的进程ID. 3) 此进程没有控制终端。如果在调用setsid之前此进程有一个控制终端，那么这种联系也被解除了。 |
+| 返回值 | 执行成功返回会话ID(也就是进行该调用的进程ID)，出错则返回1|
+|附加说明 | 如果此调用进程已经是一个进程组的组长，则此函数返回出错。为了保证不处于这种情况，通常先调用fork，然后使其父进程终止，而子进程继续。因为子进程继承了父进程的进程组ID，而其进程ID则是新分配的，两者不可能相等，所以这就保证了子进程不是一个进程组的组长|
+
+
 表2-3 signal、sigaction函数
+|主题 |内容 |
+|---- | ----|
+|表头文件 | #include <signal.h> |
+|函数定义 | typedef void (*sighandler_t)(int);
+sighandler_t signal(int signum, sighandler_t handler);
+int sigaction(signum, const struct sigaction *act, struct sigaction* oldact);|
+|函数说明 |signal()会依参数signum指定的信号编号来设置该信号的处理函数。当指定的信号到达时就会跳转到参数handler指定的函数执行 
+|
+
 
 守护进程
 守护进程（Daemon），也称为精灵进程，是一种运行在后台的特殊进程，它独立于控制终端，并周期性地执行某项任务或等待处理某些发生的事件。像Lighttpd这种服务器进程以及许多系统任务进程，比如打印进程Lpd，一般都要做成守护进程。
