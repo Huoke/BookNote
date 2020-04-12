@@ -23,15 +23,11 @@ Linux信号机制包括三方面的内容，即信号发送、信号接收、信
 在Lighttpd由单进程向多进程模型转换前就已经对信号处理函数进行了设置，从而避免了每个子进程也做重复的设置，这当然是可以的，因为当一个进程调用fork时，其子进程将复制父进程的存储映像，因此信号捕捉与处理函数的地址在子进程中也是有意义的，所以子进程继承父进程的信号处理方式。下面，我们来看这段代码（如清单2-4所示）。
 ```c
 #ifdef HAVE_SIGACTION
-  struct sigaction act;
+        struct sigaction act;
 	memset(&act, 0, sizeof(act));
 	act.sa_handler = SIG_IGN;
 	sigaction(SIGPIPE, &act, NULL);
 #if defined(SA_SIGINFO)
-	last_sighup_info.si_uid = 0,
-	last_sighup_info.si_pid = 0;
-	last_sigterm_info.si_uid = 0,
-	last_sigterm_info.si_pid = 0;
 	act.sa_sigaction = sigaction_handler;
 	sigemptyset(&act.sa_mask); // 将信号屏蔽集初始化并清空
 	act.sa_flags = SA_SIGINFO; // 设置SA_SIGINF
@@ -77,6 +73,24 @@ Linux信号机制包括三方面的内容，即信号发送、信号接收、信
 	}
 #endif
 ...
-
-
 ```
+
+相比较signal函数而言， sigaction函数有更多的优势，因此程序利用条件编译宏首先判断是否可以使用sigaction函数，否则使用signal函数。
+
+act是一个sigaction结构体，该结构体定义如下：
+```c
+struct sigaction {
+    void (*sa_handler)(int);
+    void (*sa_sigaction)(int, siginfo_t*, void*);
+    sigset_t sa_mask;
+    int sa_flags;
+    void (*sa_restorer)(void);
+};
+```
+- 使用字段sa_handler和sa_sigaction其中的一个（在某些系统上，这两个字段以union的形式出现）用来指定信号处理函数，它们的差别在与设置信号处理函数与信号处理函数之间可传递的信息量不同，字段sa_handler仅接收一个处理信号值的参数，而字段sa_sigaction可接收3个参数，分别为处理信号值、siginfo_t结构体指针变量（需要指定字段sa_flags为SA_SIGINFO）和任意指针变量，因此具体使用哪一个根据需要而定。
+- 字段sa_mask用于设置一个信号屏蔽集，在调用信号捕捉处理函数之前，该信号集要加到进程的信号屏蔽字中，只有当从信号捕捉处理函数返回时再将进程的信号屏蔽字恢复为原先值。
+- 字段sa_restorer现在不使用。
+
+系统调用getitimer/setitimer用于获取或设置定时器的值，它们的具体含义见表2-7所示。
+|主题 | 内容|
+
