@@ -101,6 +101,92 @@ struct sigaction {
 返回值 | 执行成功则返回0， 失败返回-1， errno为错误代码。 部分错误代码:  EFAULT：value 或 ovalue不是有效的指针。 EINVAL：which值不是ITIMER_REAL、ITIMER_VIRTUAL或者ITIMER_PROF之一。
 附加说明 | 。。。。
 
+信号处理函数设置好后，我们再来看看信号处理函数里面到底做了些什么。很简单，其根据当前进程接收到的信号设置相关变量，虽然仅此而已，但是这些变量值却控制着我们Lighttpd进程运行的全部执行流程。
 
+代码清单2-5信号处理函数
+```c
+static volatile sig_atomic_t graceful_restart = 0;
+static volatile sig_atomic_t graceful_shutdown = 0;
+static volatile sig_atomic_t srv_shutdown = 0;
+static volatile sig_atomic_t handle_sig_child = 0;
+static volatile sig_atomic_t handle_sig_alarm = 1;
+static volatile sig_atomic_t handle_sig_hup = 0;
+static time_t idle_limit = 0;
+
+#if defined(HAVE_SIGACTION) && defined(SA_SIGINFO)
+static volatile siginfo_t last_sigterm_info;
+static volatile siginfo_t last_sighup_info;
+
+static void sigaction_handler(int sig, siginfo_t *si, void *context) {
+	static const siginfo_t empty_siginfo;
+	UNUSED(context);
+
+	if (!si) *(const siginfo_t **)&si = &empty_siginfo;
+
+	switch (sig) {
+	case SIGTERM:
+		srv_shutdown = 1;
+		last_sigterm_info = *si;
+		break;
+	case SIGUSR1:
+		if (!graceful_shutdown) {
+			graceful_restart = 1;
+			graceful_shutdown = 1;
+			last_sigterm_info = *si;
+		}
+		break;
+	case SIGINT:
+		if (graceful_shutdown) {
+			if (2 == graceful_restart)
+				graceful_restart = 1;
+			else
+				srv_shutdown = 1;
+		} else {
+			graceful_shutdown = 1;
+		}
+		last_sigterm_info = *si;
+
+		break;
+	case SIGALRM: 
+		handle_sig_alarm = 1; 
+		break;
+	case SIGHUP:
+		handle_sig_hup = 1;
+		last_sighup_info = *si;
+		break;
+	case SIGCHLD:
+		handle_sig_child = 1;
+		break;
+	}
+}
+#elif defined(HAVE_SIGNAL) || defined(HAVE_SIGACTION)
+static void signal_handler(int sig) {
+	switch (sig) {
+	case SIGTERM: srv_shutdown = 1; break;
+	case SIGUSR1:
+		if (!graceful_shutdown) {
+			graceful_restart = 1;
+			graceful_shutdown = 1;
+		}
+		break;
+	case SIGINT:
+		if (graceful_shutdown) {
+			if (2 == graceful_restart)
+				graceful_restart = 1;
+			else
+				srv_shutdown = 1;
+		} else {
+			graceful_shutdown = 1;
+		}
+		break;
+	case SIGALRM: handle_sig_alarm = 1; break;
+	case SIGHUP:  handle_sig_hup = 1; break;
+	case SIGCHLD: handle_sig_child = 1; break;
+	}
+}
+#endif
+```
+sig_atomic_t变量类型值得说明一下，这个类型定义在signal.h头文件（/usr/include/ bits/sigset.h）中：typedef int __sig_atomic_t;
+当我们在处理信号（signal）的时候，有时对于一些变量的访问希望不会被中断（无论是来自硬件中断还是软件中断），这就要求访问或改变这些变量需要在计算机的一条指令内完成。通常情况下，int类型的变量通常是原子访问的（另外GUN C的文档也说比int短的类型通常也是具有原子性的，例如short类型，同时指针（地址）类型也一定是原子性的），当我们把变量声明为sig_atomic_t类型时，则会保证该变量在使用或赋值时，无论是在32位还是64位的机器上都能保证操作是原子的。
 
 
