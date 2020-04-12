@@ -97,7 +97,10 @@ struct sigaction {
 -|-
 表头文件 | #include<sys/time.h>
 函数定义 | int getitimer(int which, struct itimerval* value); int setitimer(int which, const struct itimerval* value, struct itimerval* ovalue);
-函数说明 | 获取或设置定时器的值。 参数which用于指定计时方式，可取值为ITIMER_REAL，ITIMER_VIRTUAL，ITIMER_PROF。其中ITIMER_REAL表示计时真实时间(与alarm类型相同)，当定时器超时时发送SIGALRM信号；ITIMER_VIRTUAL表示计时进程在用户态下的实际执行时间，当定时器超时时发送SIGVTALRM信号；ITIMER_PROF表示计时进程在用户态和核心态下的实际执行时间，当定时器超时时发送SIGPROF信号。
+函数说明 | 获取或设置定时器的值。 参数which用于指定计时方式，可取值为ITIMER_REAL，ITIMER_VIRTUAL，ITIMER_PROF。其中ITIMER_REAL表示计时真实时间(与alarm类型相同)，当定时器超时时发送SIGALRM信号；ITIMER_VIRTUAL表示计时进程在用户态下的实际执行时间，当定时器超时时发送SIGVTALRM信号；ITIMER_PROF表示计时进程在用户态和核心态下的实际执行时间，当定时器超时时发送SIGPROF信号。itimerval结构体定义为:```c struct itimerval { struct timeval it_interval; // next value struct timeval it_value; // current value};struct timeval {  long tv_sec; // second  long tv_usec; // microseconds};```
+返回值 | 执行成功则返回0， 失败返回-1， errno为错误代码。 部分错误代码:  EFAULT：value 或 ovalue不是有效的指针。 EINVAL：which值不是ITIMER_REAL、ITIMER_VIRTUAL或者ITIMER_PROF之一。
+附加说明 | 。。。。
+
 
 
 
