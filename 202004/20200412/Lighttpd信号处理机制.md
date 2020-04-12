@@ -12,7 +12,7 @@
 # 三、Linux的信号机制
 Linux信号机制包括三方面的内容，即信号发送、信号接收、信号处理，如图2-5所示。
 
-[信号发送、接收与处理](http://tiebapic.baidu.com/forum/pic/item/5e350f11728b4710850e07aad4cec3fdfd0323cc.jpg)
+[信号发送、接收与处理](http://tiebapic.baidu.com/forum/w%3D580/sign=cb2a60956e310a55c424defc87454387/5e350f11728b4710850e07aad4cec3fdfd0323cc.jpg)
 
 图2-5 信号发送、接收与处理
 
